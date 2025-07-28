@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Real Time Chat Application</title>
+
+  <!-- SockJS + STOMP -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+  <!-- Bootstrap CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" 
+    rel="stylesheet"
+    integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" 
+    crossorigin="anonymous"
+  />
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="text-center">Real-Time Chat Application</h1>
+
+    <div 
+      id="chat" 
+      class="border border-primary rounded mb-3 p-3" 
+      style="height: 300px; overflow-y: auto"
+    ></div>
+
+    <div class="input-group mb-3">
+      <input 
+        id="senderInput" 
+        type="text" 
+        class="form-control" 
+        placeholder="Username" 
+      />
+    </div>
+
+    <div class="input-group mb-3">
+      <input 
+        id="messageInput" 
+        type="text" 
+        class="form-control" 
+        placeholder="Type a message..." 
+      />
+    </div>
+
+    <button 
+      id="sendMessage" 
+      class="btn btn-primary w-100"
+      disabled
+    >
+      Send
+    </button>
+  </div>
+
+  <footer class="text-center mb-4">
+    <p>&copy; 2025 Chat Application. All rights reserved.</p>
+  </footer>
+
+  <script>
+    let stompClient = null;
+
+    function setConnected(connected) {
+      document.getElementById('sendMessage').disabled = !connected;
+    }
+
+    function connect() {
+      const socket = new SockJS('/chat');
+      stompClient = Stomp.over(socket);
+
+      stompClient.connect({}, frame => {
+        console.log('Connected: ' + frame);
+        setConnected(true);
+
+        stompClient.subscribe('/topic/message', msg => {
+          showMessage(JSON.parse(msg.body));
+        });
+      }, error => {
+        console.error('STOMP error:', error);
+      });
+    }
+
+    function sendMessage() {
+      const sender  = document.getElementById('senderInput').value.trim();
+      const content = document.getElementById('messageInput').value.trim();
+      if (!sender || !content) return; // nothing to send
+
+      const chatMessage = { sender, content };
+      stompClient.send(
+        '/app/sendMessage',
+        {},
+        JSON.stringify(chatMessage)
+      );
+
+      document.getElementById('messageInput').value = '';
+    }
+
+    function showMessage(message) {
+      const chat = document.getElementById('chat');
+      const el   = document.createElement('div');
+
+      el.className = 'border border-bottom p-2 mb-2';
+      el.textContent = `${message.sender}: ${message.content}`;
+
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    window.onload = () => {
+      connect();
+      document.getElementById('sendMessage')
+              .addEventListener('click', sendMessage);
+    };
+  </script>
+</body>
+</html>
